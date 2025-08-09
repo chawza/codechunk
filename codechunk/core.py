@@ -42,7 +42,7 @@ class Repository(BaseModel):
     def cache_dir_exists(self) -> bool:
         return os.path.exists(self.cache_dir_path)
 
-    def setup_cache_dir(self) -> str:
+    def setup_cache_dir(self) -> None:
         if not os.path.exists(self.cache_dir_path):
             logger.debug(f'setup cache dir for in {self.cache_dir_path}')
             os.makedirs(self.cache_dir_path, exist_ok=True)
