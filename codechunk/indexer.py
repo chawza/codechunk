@@ -21,7 +21,6 @@ class Indexer:
 
         result = FileIndexResult(filename=filename, chunk_count=0)
 
-
         for chunk in self.chunker.chunk_file(file_path=filename):
             chunks.append(chunk)
             result.chunk_count += 1
