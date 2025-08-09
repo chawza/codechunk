@@ -2,7 +2,8 @@ import os
 import sys
 import typer
 
-from codechunk.core import Indexer, Repository, clone_project
+from codechunk.core import Repository, clone_project
+from codechunk.indexer import Indexer
 from codechunk.utils import logger
 
 app = typer.Typer()
