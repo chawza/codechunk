@@ -1,5 +1,6 @@
 from dataclasses import dataclass, Field
 from typing import Generator
+import hashlib
 
 from pydantic import FilePath
 
@@ -9,6 +10,11 @@ class FileChunk:
     start_line: int
     end_line: int
     content: str
+    file_hash: str
+
+    @property
+    def document_id(self) -> str:
+        return ':'.join([self.filename, str(self.start_line), str(self.end_line), self.file_hash])
 
 
 @dataclass
@@ -17,6 +23,9 @@ class Chunker:
 
     def chunk_file(self, file_path: str) -> Generator[FileChunk, None, None]:
         with open(file_path, 'r') as file:
+            file_hash = str(hashlib.md5(file.read().encode()))
+            file.seek(0)
+
             chunk_lines: list[str] = []
 
             last_first_line = None
@@ -36,7 +45,8 @@ class Chunker:
                         content='\n'.join(chunk_lines),
                         filename=file_path,
                         start_line=last_first_line,
-                        end_line=current_line
+                        end_line=current_line,
+                        file_hash=file_hash,
                     )
                     last_first_line = None
                     chunk_lines = []
@@ -47,5 +57,6 @@ class Chunker:
                     content='\n'.join(chunk_lines),
                     filename=file_path,
                     start_line=last_first_line,
-                    end_line=current_line
+                    end_line=current_line,
+                    file_hash=file_hash,
                 )
