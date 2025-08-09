@@ -55,7 +55,7 @@ def clone_project(repo: Repository, github_token: str | None = None, force: bool
         if force:
             pass # TODO: delete cache and reclone
         else:
-            logger.debug(f'Trying to clone cache dir to {repo.cache_dir_path} but already exists')
+            logger.warning(f'Trying to clone cache dir to {repo.cache_dir_path} but already exists')
             return
 
     if github_token:
