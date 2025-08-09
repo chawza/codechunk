@@ -13,7 +13,7 @@ class Indexer:
     def __init__(self, db_name: str, batch_size: int = 30) -> None:
         self.client = chromadb.Client()
         self.collection = self.client.get_or_create_collection(db_name)
-        self.chunker = Chunker(30)
+        self.chunker = Chunker(chunk_size=30)
         self.batch_size = batch_size
 
     def index_file(self, filename: str):
