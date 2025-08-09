@@ -52,7 +52,7 @@ class Chunker:
                     chunk_lines = []
 
 
-            if chunk_lines:
+            if chunk_lines and last_first_line:
                 yield FileChunk(
                     content='\n'.join(chunk_lines),
                     filename=file_path,

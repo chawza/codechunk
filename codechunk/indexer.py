@@ -10,7 +10,7 @@ class FileIndexResult(BaseModel):
     chunk_count: int
 
 class Indexer:
-    def __init__(self, db_name: str = None, batch_size: int = 30) -> None:
+    def __init__(self, db_name: str, batch_size: int = 30) -> None:
         self.client = chromadb.Client()
         self.collection = self.client.get_or_create_collection(db_name)
         self.chunker = Chunker(30)
@@ -20,6 +20,8 @@ class Indexer:
         logger.debug(f'Indexing file {filename}')
 
         result = FileIndexResult(filename=filename, chunk_count=0)
+
+        chunks = []
 
         for chunk in self.chunker.chunk_file(file_path=filename):
             chunks.append(chunk)
