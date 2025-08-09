@@ -22,8 +22,5 @@ def setup(project_url: str):
         logger.info(f'Setup repository')
         clone_project(repo, github_token=github_token)
 
-    indexer = Indexer(db_name=repo.name, batch_size=30)
-    indexer.index_file('fixtures/lorem.txt')
-
 if __name__ == '__main__':
     app()
