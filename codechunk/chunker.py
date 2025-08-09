@@ -21,8 +21,8 @@ class FileChunk:
 class Chunker:
     chunk_size: int
 
-    def chunk_file(self, file_path: str) -> Generator[FileChunk, None, None]:
-        with open(file_path, 'r') as file:
+    def chunk_file(self, filepath: str, filename: str) -> Generator[FileChunk, None, None]:
+        with open(filepath, 'r') as file:
             file_hash = str(hashlib.md5(file.read().encode()))
             file.seek(0)
 
@@ -43,7 +43,7 @@ class Chunker:
                 if current_line % self.chunk_size == 0:
                     yield FileChunk(
                         content='\n'.join(chunk_lines),
-                        filename=file_path,
+                        filename=filename,
                         start_line=last_first_line,
                         end_line=current_line,
                         file_hash=file_hash,
@@ -55,7 +55,7 @@ class Chunker:
             if chunk_lines and last_first_line:
                 yield FileChunk(
                     content='\n'.join(chunk_lines),
-                    filename=file_path,
+                    filename=filename,
                     start_line=last_first_line,
                     end_line=current_line,
                     file_hash=file_hash,

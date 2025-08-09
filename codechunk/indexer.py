@@ -16,14 +16,12 @@ class Indexer:
         self.chunker = Chunker(chunk_size=30)
         self.batch_size = batch_size
 
-    def index_file(self, filename: str):
-        logger.debug(f'Indexing file {filename}')
-
+    def index_file(self, filepath: str, filename: str):
         result = FileIndexResult(filename=filename, chunk_count=0)
 
         chunks = []
 
-        for chunk in self.chunker.chunk_file(file_path=filename):
+        for chunk in self.chunker.chunk_file(filepath, filename):
             chunks.append(chunk)
             result.chunk_count += 1
 

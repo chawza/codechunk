@@ -16,7 +16,7 @@ class ChunkerTestCase(TestCase):
 
         total_chunks = ceil(file_line_counts / 5)
 
-        chunks = list(chunker.chunk_file(sample_file_path))
+        chunks = list(chunker.chunk_file(sample_file_path, sample_file_path))
 
         self.assertEqual(total_chunks, len(chunks))
 

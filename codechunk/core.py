@@ -1,10 +1,14 @@
+from dataclasses import dataclass
+from typing import TYPE_CHECKING
 import chromadb
 import os
 from pydantic.main import BaseModel
 
-from codechunk.chunker import Chunker, FileChunk
-from codechunk.utils import logger
 
+from codechunk.utils import get_text_and_code_file_regex, logger
+
+if TYPE_CHECKING:
+    from codechunk.indexer import FileIndexResult, Indexer
 
 def parse_github_repo_url(url) -> tuple[str, str] | None:
     import re
@@ -46,6 +50,29 @@ class Repository(BaseModel):
         if not os.path.exists(self.cache_dir_path):
             logger.debug(f'setup cache dir for in {self.cache_dir_path}')
             os.makedirs(self.cache_dir_path, exist_ok=True)
+
+    def index_files(self, indexer: 'Indexer') -> 'list[FileIndexResult]':
+        results = []
+
+        pattern = get_text_and_code_file_regex()
+
+        for root, _, files in os.walk(self.cache_dir_path):
+            for file in files:
+                if '.git' in root:
+                    continue
+
+                if not pattern.search(file):
+                    continue
+
+                absoulute_path = os.path.join(root, file)
+                relative_path = absoulute_path.replace(self.cache_dir_path, '').lstrip('/')
+
+                logger.debug(f'Indexing {relative_path}')
+                result = indexer.index_file(absoulute_path, relative_path)
+
+                results.append(result)
+
+        return results
 
 
 def clone_project(repo: Repository, github_token: str | None = None, force: bool = False):
