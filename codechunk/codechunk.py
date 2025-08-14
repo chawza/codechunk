@@ -24,7 +24,7 @@ def setup(project_url: str):
 
     logger.debug(f'Repo "{repo.name}" cache director is in {repo.cache_dir_path}')
 
-    indexer = OpenAIIndexer(repo.name, batch_size=32)
+    indexer = OpenAIIndexer(repo.name, batch_size=int(os.environ['INDEX_BATCH_SIZE']))
     summary = indexer.index(repo)
 
     logger.info(str(summary))
