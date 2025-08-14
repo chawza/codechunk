@@ -52,3 +52,9 @@ def get_text_and_code_file_regex():
     """
     # Case-insensitive matching for extensions
     return re.compile(matched_pattern, re.IGNORECASE)
+
+def get_skip_patterns():
+    return re.compile(
+        r'.*[\\/][^\\/]+[\\/]migrations[\\/](?:[^\\/]+[\\/])*\d{4}[^\\/]*\.py$'
+
+    )

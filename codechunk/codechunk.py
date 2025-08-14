@@ -3,7 +3,7 @@ import sys
 import typer
 
 from codechunk.core import Repository, clone_project
-from codechunk.indexer import Indexer
+from codechunk.indexer import OpenAIIndexer
 from codechunk.utils import logger
 
 app = typer.Typer()
@@ -24,13 +24,10 @@ def setup(project_url: str):
 
     logger.debug(f'Repo "{repo.name}" cache director is in {repo.cache_dir_path}')
 
-    indexer = Indexer(repo.name, batch_size=30)
-    index_results = repo.index_files(indexer)
+    indexer = OpenAIIndexer(repo.name, batch_size=32)
+    summary = indexer.index(repo)
 
-    logger.info(f'{'file':<30} | {'chunks':<30}')
-    for index_result in index_results:
-        filename = index_result.filename.lstrip(repo.cache_dir_path)
-        logger.info(f'{filename:<30} | {index_result.chunk_count:>10} chunk(s)')
+    logger.info(str(summary))
 
 if __name__ == '__main__':
     app()
