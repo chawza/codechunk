@@ -1,4 +1,6 @@
+import os
 import chromadb
+from chromadb.utils.embedding_functions import OpenAIEmbeddingFunction, EmbeddingFunction
 from pydantic.v1.main import BaseModel
 
 from codechunk.chunker import Chunker, FileChunk
@@ -12,9 +14,12 @@ class FileIndexResult(BaseModel):
 class Indexer:
     def __init__(self, db_name: str, batch_size: int = 30) -> None:
         self.client = chromadb.Client()
-        self.collection = self.client.get_or_create_collection(db_name)
+        self.collection = self.client.get_or_create_collection(db_name, embedding_function=self.get_embedding_function())
         self.chunker = Chunker(chunk_size=30)
         self.batch_size = batch_size
+
+    def get_embedding_function(self) -> EmbeddingFunction | None:
+        return None
 
     def index_file(self, filepath: str, filename: str):
         result = FileIndexResult(filename=filename, chunk_count=0)
@@ -40,3 +45,11 @@ class Indexer:
         upsert_ids = [chunk.document_id for chunk in chunks]
         upsert_documents = [chunk.content for chunk in chunks]
         self.collection.upsert(ids=upsert_ids, documents=upsert_documents)
+
+class OpenAIIndexer(Indexer):
+    def get_embedding_function(self) -> EmbeddingFunction | None:
+        return OpenAIEmbeddingFunction(
+            api_key=os.environ['INDEX_API_KEY'],
+            api_base=os.environ['INDEX_API_BASE'],
+            model_name=os.environ['INDEX_MODEL_NAME']
+        )
