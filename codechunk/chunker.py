@@ -2,10 +2,9 @@ from dataclasses import dataclass, Field
 from typing import Generator
 import hashlib
 
-from pydantic import FilePath
+from pydantic import BaseModel
 
-@dataclass
-class FileChunk:
+class FileChunk(BaseModel):
     filename: str
     start_line: int
     end_line: int
@@ -15,6 +14,10 @@ class FileChunk:
     @property
     def document_id(self) -> str:
         return ':'.join([self.filename, str(self.start_line), str(self.end_line), self.file_hash])
+
+    @property
+    def metadata_dict(self) -> dict[str, int | str]:
+        return self.model_dump(exclude={'content',})
 
 
 @dataclass

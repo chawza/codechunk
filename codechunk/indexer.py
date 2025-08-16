@@ -40,11 +40,12 @@ class IndexCache(BaseModel):
     def setup(self):
         if os.path.exists(self.cache_path):
             self.load()
+            logger.info(f'loaded {len(self.state.keys())} (chunks) cached chunk from {self.cache_path}')
 
 
 class Indexer:
     def __init__(self, db_name: str, batch_size: int = 30) -> None:
-        self.client = chromadb.Client()
+        self.client = chromadb.PersistentClient(path=f'{db_name}.chroma')
         self.collection = self.client.get_or_create_collection(db_name, embedding_function=self.get_embedding_function())
         self.chunker = Chunker(chunk_size=30)
         self.batch_size = batch_size
@@ -73,22 +74,16 @@ class Indexer:
                 absoulute_path = os.path.join(root, file)
                 relative_path = absoulute_path.replace(repo.cache_dir_path, '').lstrip('/')
 
-                if relative_path in self.cache.state:
-                    logger.debug(f'skip {file}')
-                    continue
-
-                logger.debug(f'Indexing {relative_path}')
-
                 for chunk in self.chunker.chunk_file(absoulute_path, relative_path):
+                    if chunk.document_id in self.cache.state:
+                        continue
+
                     chunks.append(chunk)
 
                     if len(chunks) >= self.batch_size:
                         self._index_chunks(chunks)
                         chunks = []
                         summary.chunk_count += self.batch_size
-
-                self.cache.state[relative_path] = 'inserted'
-                self.cache.save()
 
         if chunks:
             self._index_chunks(chunks)
@@ -101,7 +96,14 @@ class Indexer:
         logger.debug(f'Indexing {len(chunks)} chunks')
         upsert_ids = [chunk.document_id for chunk in chunks]
         upsert_documents = [chunk.content for chunk in chunks]
-        self.collection.upsert(ids=upsert_ids, documents=upsert_documents)
+        upsert_metadatas = [chunk.metadata_dict for chunk in chunks]
+        self.collection.upsert(ids=upsert_ids, documents=upsert_documents, metadatas=upsert_metadatas)  # type: ignore[reportargumenttype]
+
+        for chunk in chunks:
+            self.cache.state[chunk.document_id] = 'inserted'
+
+        self.cache.save()
+        logger.debug(f'Saving cache {self.cache.cache_path} {len(self.cache.state.keys())} (chunks)')
 
 class OpenAIIndexer(Indexer):
     def get_embedding_function(self) -> OpenAIEmbeddingFunction | None:
