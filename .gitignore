@@ -6,5 +6,10 @@ dist/
 wheels/
 *.egg-info
 
+# cache
+*.chroma
+*.pickle
+*.log
+
 # Virtual environments
 .venv
