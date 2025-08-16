@@ -7,7 +7,7 @@ from pydantic.v1.main import BaseModel
 
 from codechunk.chunker import Chunker, FileChunk
 from codechunk.core import Repository
-from codechunk.utils import get_text_and_code_file_regex, logger, get_skip_patterns
+from codechunk.utils import get_text_and_code_file_regex, logger
 
 
 class FileIndexResult(BaseModel):
@@ -59,7 +59,6 @@ class Indexer:
     def index(self, repo: Repository) -> IndexSummary:
         summary = IndexSummary()
         pattern = get_text_and_code_file_regex()
-        skip_pattern = get_skip_patterns()
         chunks: list[FileChunk] = []
 
         for root, _, files in os.walk(repo.cache_dir_path):
@@ -67,7 +66,7 @@ class Indexer:
                 if '.git' in root:
                     continue
 
-                if not pattern.search(file) or skip_pattern.search(file):
+                if not pattern.search(file):
                     continue
 
                 summary.file_count += 1
