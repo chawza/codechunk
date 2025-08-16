@@ -23,7 +23,7 @@ class IndexSummary(BaseModel):
 class IndexCache(BaseModel):
     # TODO: append file, rather thank rewrite
     name:str
-    state: dict[str, list[str]]  # filename to document_id(d)
+    state: set[str]  # filename to document_id(d)
 
     @property
     def cache_path(self) -> str:
@@ -42,7 +42,7 @@ class IndexCache(BaseModel):
     def setup(self):
         if os.path.exists(self.cache_path):
             self.load()
-            logger.info(f'loaded {len(self.state.keys())} (chunks) cached chunk from {self.cache_path}')
+            logger.info(f'loaded {len(self.state)} (chunks) cached chunk from {self.cache_path}')
 
 
 class Indexer:
@@ -52,7 +52,7 @@ class Indexer:
         self.chunker = Chunker(chunk_size=30)
         self.batch_size = batch_size
 
-        self.cache = IndexCache(name=db_name, state={})
+        self.cache = IndexCache(name=db_name, state=set())
         self.cache.setup()
 
     def get_embedding_function(self) -> EmbeddingFunction | None:
@@ -89,14 +89,16 @@ class Indexer:
 
         filename_to_count_mapping = defaultdict(int)
         total_chunks = 0
+        filenames = set()
 
-        for filename, ids in self.cache.state.items():
-            document_count = len(ids)
-            total_chunks += document_count
-            filename_to_count_mapping[filename] += document_count
+        for document_id in self.cache.state:
+            filename = document_id.split(':')[0]
+            total_chunks += 1
+            filename_to_count_mapping[filename] += 1
+            filenames.add(filename)
 
         return IndexSummary(
-            total_files=len(self.cache.state.keys()),
+            total_files=len(filenames),
             total_chunk=total_chunks,
             files=filename_to_count_mapping
         )
@@ -109,12 +111,10 @@ class Indexer:
         self.collection.upsert(ids=upsert_ids, documents=upsert_documents, metadatas=upsert_metadatas)  # type: ignore[reportargumenttype]
 
         for chunk in chunks:
-            if chunk.filename not in self.cache.state:
-                self.cache.state[chunk.filename] = []
-            self.cache.state[chunk.filename].append(chunk.document_id)
+            self.cache.state.add(chunk.document_id)
 
         self.cache.save()
-        logger.debug(f'Saving cache {self.cache.cache_path} {len(self.cache.state.keys())} (chunks)')
+        logger.debug(f'Saving cache {self.cache.cache_path} {len(self.cache.state)} (chunks)')
 
 class OpenAIIndexer(Indexer):
     def get_embedding_function(self) -> OpenAIEmbeddingFunction | None:
