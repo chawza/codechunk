@@ -1,3 +1,4 @@
+import pickle
 import os
 import chromadb
 from chromadb.utils.embedding_functions import OpenAIEmbeddingFunction, EmbeddingFunction
@@ -17,12 +18,39 @@ class IndexSummary(BaseModel):
     file_count: int = 0
     chunk_count: int = 0
 
+class IndexCache(BaseModel):
+    # TODO: append file, rather thank rewrite
+    name:str
+    state: dict
+
+    @property
+    def cache_path(self) -> str:
+        return f'./{self.name}_cache.pickle'
+
+    def save(self):
+        with open(self.cache_path, 'wb') as buffer:
+            pickle.dump(self.state, buffer)
+
+    def load(self):
+        with open(self.cache_path, 'rb') as buffer:
+            self.state = pickle.load(buffer)
+            if not isinstance(self.state, dict):
+                raise TypeError(self.state)
+
+    def setup(self):
+        if os.path.exists(self.cache_path):
+            self.load()
+
+
 class Indexer:
     def __init__(self, db_name: str, batch_size: int = 30) -> None:
         self.client = chromadb.Client()
         self.collection = self.client.get_or_create_collection(db_name, embedding_function=self.get_embedding_function())
         self.chunker = Chunker(chunk_size=30)
         self.batch_size = batch_size
+
+        self.cache = IndexCache(name=db_name, state={})
+        self.cache.setup()
 
     def get_embedding_function(self) -> EmbeddingFunction | None:
         return None
@@ -44,6 +72,11 @@ class Indexer:
                 summary.file_count += 1
                 absoulute_path = os.path.join(root, file)
                 relative_path = absoulute_path.replace(repo.cache_dir_path, '').lstrip('/')
+
+                if relative_path in self.cache.state:
+                    logger.debug(f'skip {file}')
+                    continue
+
                 logger.debug(f'Indexing {relative_path}')
 
                 for chunk in self.chunker.chunk_file(absoulute_path, relative_path):
@@ -53,6 +86,9 @@ class Indexer:
                         self._index_chunks(chunks)
                         chunks = []
                         summary.chunk_count += self.batch_size
+
+                self.cache.state[relative_path] = 'inserted'
+                self.cache.save()
 
         if chunks:
             self._index_chunks(chunks)
