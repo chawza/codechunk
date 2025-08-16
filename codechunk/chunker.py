@@ -26,7 +26,7 @@ class Chunker:
 
     def chunk_file(self, filepath: str, filename: str) -> Generator[FileChunk, None, None]:
         with open(filepath, 'r') as file:
-            file_hash = str(hashlib.md5(file.read().encode()))
+            file_hash = hashlib.md5(file.read().encode()).hexdigest()
             file.seek(0)
 
             chunk_lines: list[str] = []

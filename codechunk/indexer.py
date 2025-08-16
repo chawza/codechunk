@@ -1,3 +1,4 @@
+from collections import defaultdict
 import pickle
 import os
 import chromadb
@@ -15,13 +16,14 @@ class FileIndexResult(BaseModel):
     chunk_count: int
 
 class IndexSummary(BaseModel):
-    file_count: int = 0
-    chunk_count: int = 0
+    files: dict[str, int]
+    total_chunk: int
+    total_files: int
 
 class IndexCache(BaseModel):
     # TODO: append file, rather thank rewrite
     name:str
-    state: dict
+    state: dict[str, list[str]]  # filename to document_id(d)
 
     @property
     def cache_path(self) -> str:
@@ -57,7 +59,6 @@ class Indexer:
         return None
 
     def index(self, repo: Repository) -> IndexSummary:
-        summary = IndexSummary()
         pattern = get_text_and_code_file_regex()
         chunks: list[FileChunk] = []
 
@@ -69,7 +70,6 @@ class Indexer:
                 if not pattern.search(file):
                     continue
 
-                summary.file_count += 1
                 absoulute_path = os.path.join(root, file)
                 relative_path = absoulute_path.replace(repo.cache_dir_path, '').lstrip('/')
 
@@ -82,14 +82,24 @@ class Indexer:
                     if len(chunks) >= self.batch_size:
                         self._index_chunks(chunks)
                         chunks = []
-                        summary.chunk_count += self.batch_size
 
         if chunks:
             self._index_chunks(chunks)
-            summary.chunk_count += len(chunks)
             chunks = []
 
-        return summary
+        filename_to_count_mapping = defaultdict(int)
+        total_chunks = 0
+
+        for filename, ids in self.cache.state.items():
+            document_count = len(ids)
+            total_chunks += document_count
+            filename_to_count_mapping[filename] += document_count
+
+        return IndexSummary(
+            total_files=len(self.cache.state.keys()),
+            total_chunk=total_chunks,
+            files=filename_to_count_mapping
+        )
 
     def _index_chunks(self, chunks: list[FileChunk]):
         logger.debug(f'Indexing {len(chunks)} chunks')
@@ -99,7 +109,9 @@ class Indexer:
         self.collection.upsert(ids=upsert_ids, documents=upsert_documents, metadatas=upsert_metadatas)  # type: ignore[reportargumenttype]
 
         for chunk in chunks:
-            self.cache.state[chunk.document_id] = 'inserted'
+            if chunk.filename not in self.cache.state:
+                self.cache.state[chunk.filename] = []
+            self.cache.state[chunk.filename].append(chunk.document_id)
 
         self.cache.save()
         logger.debug(f'Saving cache {self.cache.cache_path} {len(self.cache.state.keys())} (chunks)')
