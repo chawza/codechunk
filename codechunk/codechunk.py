@@ -2,7 +2,7 @@ import os
 import sys
 import typer
 
-from codechunk.core import Repository, clone_project
+from codechunk.core import Repository, clone_project, get_current_commit_id
 from codechunk.indexer import OpenAIIndexer
 from codechunk.utils import logger
 
@@ -24,7 +24,7 @@ def setup(project_url: str):
 
     logger.debug(f'Repo "{repo.name}" cache director is in {repo.cache_dir_path}')
 
-    indexer = OpenAIIndexer(repo.name, batch_size=int(os.environ['INDEX_BATCH_SIZE']))
+    indexer = OpenAIIndexer(f'{repo.name}_{get_current_commit_id(repo)}', batch_size=int(os.environ['INDEX_BATCH_SIZE']))
     summary = indexer.index(repo)
 
     logger.info(str(summary))

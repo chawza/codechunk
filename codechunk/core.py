@@ -1,3 +1,4 @@
+import subprocess
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 import chromadb
@@ -51,10 +52,7 @@ class Repository(BaseModel):
             logger.debug(f'setup cache dir for in {self.cache_dir_path}')
             os.makedirs(self.cache_dir_path, exist_ok=True)
 
-
 def clone_project(repo: Repository, github_token: str | None = None, force: bool = False):
-    import subprocess
-
     if repo.cache_dir_exists():
         if force:
             pass # TODO: delete cache and reclone
@@ -78,3 +76,17 @@ def clone_project(repo: Repository, github_token: str | None = None, force: bool
     logger.debug(f'Execute: {command}')
 
     subprocess.run(command, capture_output=True, text=True, check=True)
+
+def get_current_commit_id(repo: Repository) -> str:
+    command = [
+        'git',
+        '-C',
+        repo.cache_dir_path,
+        'rev-parse',
+        '--short',
+        'HEAD'
+    ]
+    hash  = subprocess.run(command, capture_output=True, text=True, check=True).stdout.strip()
+    if not hash:
+        raise ValueError(hash)
+    return hash
