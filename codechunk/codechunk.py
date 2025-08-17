@@ -1,7 +1,12 @@
+import datetime
 import os
+from pathlib import Path
+from pydantic import ConfigDict, BaseModel
 import typer
+from datetime import datetime
 
-from codechunk.core import Repository, clone_project, get_all_projects, get_current_commit_id, get_project_cache_dir
+from codechunk.chunker import FileChunk
+from codechunk.core import Repository, clone_project, get_all_projects, get_current_commit_id
 from codechunk.indexer import OpenAIIndexer
 from codechunk.ui import ProjectSelection
 from codechunk.utils import logger
@@ -31,8 +36,19 @@ def index(project_url: str):
         summary.to_csv(file)
         logger.info(f'summary saved in {file.name}')
 
+class ChunkDetail(FileChunk):
+    distance: float
+
+class JSONOutput(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    repo: str  # owner/repo
+    hash: str
+    created: int
+    chunks: list[ChunkDetail]
+
 @app.command()
-def query():
+def query(output: Path = Path('output.json'), n: int = 5):
     project_names = ['/'.join([owner, name]) for owner, name in get_all_projects()]
 
     if not project_names:
@@ -55,10 +71,24 @@ def query():
     while True:
         query = typer.prompt('Query')
         if query:
-            result = indexer.collection.query(query_texts=[query,], n_results=5)
-            for id, document, distance in zip(result['ids'][0], result['documents'][0], result['distances'][0]):
-                logger.info(f'Document Id: {id} | distance: {distance:.3f}')
-                logger.info(str(document))
+            break
+
+    result = indexer.collection.query(query_texts=[query,], n_results=n)
+
+    output_result = JSONOutput(created=int(datetime.now().timestamp()), chunks=[], repo=project_name, hash=get_current_commit_id(repo))
+
+    for id, document, distance in zip(result['ids'][0], result['documents'][0], result['distances'][0]):
+        chunk = FileChunk.from_document_id(id, document)
+        output_result.chunks.append(
+            ChunkDetail(
+                **chunk.model_dump(),
+                distance=distance
+            )
+        )
+
+    with open(output, 'w') as file:
+        file.write(output_result.model_dump_json(indent=2))
+        logger.info(f'Result in "{file.name}"')
 
 
 if __name__ == '__main__':

@@ -19,6 +19,16 @@ class FileChunk(BaseModel):
     def metadata_dict(self) -> dict[str, int | str]:
         return self.model_dump(exclude={'content',})
 
+    @classmethod
+    def from_document_id(cls, document_id:str, content: str) -> 'FileChunk':
+        filename, start, end, hash = document_id.split(':')
+        return FileChunk(
+            filename=filename,
+            start_line=int(start),
+            end_line=int(end),
+            file_hash=hash,
+            content=content
+        )
 
 @dataclass
 class Chunker:
