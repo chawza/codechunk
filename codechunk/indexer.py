@@ -45,7 +45,7 @@ class IndexCache(BaseModel):
     def load(self):
         with open(self.cache_path, 'rb') as buffer:
             self.state = pickle.load(buffer)
-            if not isinstance(self.state, dict):
+            if not isinstance(self.state, set):
                 raise TypeError(self.state)
 
     def setup(self):
