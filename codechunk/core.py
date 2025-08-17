@@ -24,6 +24,9 @@ def parse_github_repo_url(url) -> tuple[str, str] | None:
     else:
         return None
 
+def get_project_cache_dir() -> str:
+    return os.path.join(os.environ['HOME'], '.cache', 'codechunk', 'projects')
+
 class Repository(BaseModel):
     owner: str
     name: str
@@ -42,7 +45,7 @@ class Repository(BaseModel):
 
     @property
     def cache_dir_path(self) -> str:
-        return os.path.join(os.environ['HOME'], '.cache', 'codechunk', 'projects', self.owner, self.name)
+        return os.path.join(get_project_cache_dir(), self.owner, self.name)
 
     def cache_dir_exists(self) -> bool:
         return os.path.exists(self.cache_dir_path)
@@ -90,3 +93,15 @@ def get_current_commit_id(repo: Repository) -> str:
     if not hash:
         raise ValueError(hash)
     return hash
+
+def get_all_projects() -> list[tuple[str, str]]:
+    projects = []
+    cache_dir = get_project_cache_dir()
+
+    for owner in os.listdir(cache_dir):
+        for project_name in os.listdir(os.path.join(cache_dir, owner)):
+            projects.append(
+                (owner, project_name)
+            )
+
+    return projects

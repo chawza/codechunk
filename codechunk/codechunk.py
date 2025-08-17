@@ -1,8 +1,9 @@
 import os
 import typer
 
-from codechunk.core import Repository, clone_project, get_current_commit_id
+from codechunk.core import Repository, clone_project, get_all_projects, get_current_commit_id, get_project_cache_dir
 from codechunk.indexer import OpenAIIndexer
+from codechunk.ui import ProjectSelection
 from codechunk.utils import logger
 
 app = typer.Typer()
@@ -31,12 +32,23 @@ def index(project_url: str):
         logger.info(f'summary saved in {file.name}')
 
 @app.command()
-def query(project_url: str):
-    repo = Repository.from_url(project_url)
+def query():
+    project_names = ['/'.join([owner, name]) for owner, name in get_all_projects()]
 
-    if not repo:
-        logger.info(f'Repository with url {project_url} not found')
+    if not project_names:
+        logger.info('No project indexed')
         return
+
+    project_selection_app = ProjectSelection(project_names)
+    project_selection_app.run()
+    project_name = project_selection_app.result
+
+    owner, project_name = project_name.split('/')
+
+    repo = Repository(
+        owner=owner,
+        name=project_name
+    )
 
     indexer = OpenAIIndexer(f'{repo.name}_{get_current_commit_id(repo)}', batch_size=int(os.environ['INDEX_BATCH_SIZE']))
 
