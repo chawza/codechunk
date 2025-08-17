@@ -7,7 +7,7 @@ from datetime import datetime
 
 from codechunk.chunker import FileChunk
 from codechunk.core import Repository, clone_project, get_all_projects, get_current_commit_id
-from codechunk.indexer import OpenAIIndexer
+from codechunk.indexer import OpenAIIndexer, generate_queries
 from codechunk.ui import ProjectSelection
 from codechunk.utils import logger
 
@@ -74,20 +74,33 @@ def query(output: Path = Path('output.json'), n: int = 5):
         if query:
             break
 
-    result = indexer.collection.query(query_texts=[query,], n_results=n)
+    expanded_queries = generate_queries(query, number=5)
+    logger.info(f'Generated {len(expanded_queries)} queries')
 
     output_result = OutputResult(created=int(datetime.now().timestamp()), chunks=[], repo=project_name, hash=get_current_commit_id(repo))
+    inserted_doc_ids = set()
 
-    for id, document, distance in zip(result['ids'][0], result['documents'][0], result['distances'][0]):
-        chunk = FileChunk.from_document_id(id, document)
-        output_result.chunks.append(
-            ChunkDetail(
-                **chunk.model_dump(),
-                distance=distance
+    for _query in expanded_queries:
+        result = indexer.collection.query(query_texts=[_query,], n_results=n)
+        for id, document, distance in zip(result['ids'][0], result['documents'][0], result['distances'][0]):
+            chunk = FileChunk.from_document_id(id, document)
+
+            if chunk.document_id in inserted_doc_ids:
+                continue
+
+            output_result.chunks.append(
+                ChunkDetail(
+                    **chunk.model_dump(),
+                    distance=distance
+                )
             )
-        )
 
-    if str(output).endswith('.csv'):
+            inserted_doc_ids.add(chunk.document_id)
+
+
+    logger.info(f'{len(output_result.chunks)} queries chunks ')
+
+    if str(output).endswith('.json'):
         with open(output, 'w') as file:
             file.write(output_result.model_dump_json(indent=2))
             logger.info(f'Result in "{file.name}"')

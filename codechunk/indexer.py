@@ -157,7 +157,7 @@ def generate_queries(query: str, number: int = 3) -> list[str]:
                 "content": f"Expand this query into {number} points\n<query>{query}<query/>"
             }
         ],
-        response_format=QueryFormat
+        response_format=QueryFormat,
     )
     parsed_output = response.choices[0].message.parsed
     if not parsed_output:
