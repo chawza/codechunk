@@ -2,9 +2,9 @@ from collections import defaultdict
 import pickle
 import os
 import chromadb
+import textwrap
 from chromadb.utils.embedding_functions import OpenAIEmbeddingFunction, EmbeddingFunction
-from pydantic.fields import Field
-from pydantic.v1.main import BaseModel
+from pydantic import BaseModel
 
 from codechunk.chunker import Chunker, FileChunk
 from codechunk.core import Repository
@@ -132,3 +132,34 @@ class OpenAIIndexer(Indexer):
             api_base=os.environ['INDEX_API_BASE'],
             model_name=os.environ['INDEX_MODEL_NAME']
         )
+
+def generate_queries(query: str, number: int = 3) -> list[str]:
+    from openai import OpenAI
+    client = OpenAI(base_url=os.environ['OPENAI_BASE_URL'], api_key=os.environ['OPENAI_API_KEY'])
+
+    class QueryFormat(BaseModel):
+        queries: list[str]
+
+    response = client.chat.completions.parse(
+        model=os.environ['OPENAI_MODEL'],
+        messages=[
+            {
+                'role': "system",
+                'content': textwrap.dedent("""\
+                    You are a Retrieval Augmented Generation (RAG) tool that is part of chatbot.
+                    the chatbot retrieves chunks of documents about coding repository or project.
+                    your task is to make more RAG queries from given user's query.
+                    each query is an expansion points that elaborate more user intention.
+                    the output is a structured json from given schema.""")
+            },
+            {
+                "role": "user",
+                "content": f"Expand this query into {number} points\n<query>{query}<query/>"
+            }
+        ],
+        response_format=QueryFormat
+    )
+    parsed_output = response.choices[0].message.parsed
+    if not parsed_output:
+        raise ValueError(f'Invalid Structured Response: {parsed_output}')
+    return parsed_output.queries
