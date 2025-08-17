@@ -1,5 +1,4 @@
 import os
-import sys
 import typer
 
 from codechunk.core import Repository, clone_project, get_current_commit_id
@@ -8,8 +7,7 @@ from codechunk.utils import logger
 
 app = typer.Typer()
 @app.command()
-def setup(project_url: str):
-
+def index(project_url: str):
     repo = Repository.from_url(project_url)
 
     if not repo:
@@ -28,6 +26,10 @@ def setup(project_url: str):
     summary = indexer.index(repo)
 
     logger.info(str(summary))
+
+    with open(f'{repo.name}_{get_current_commit_id(repo)}.csv', 'w') as file:
+        summary.to_csv(file)
+        logger.info(f'summary saved in {file.name}')
 
 if __name__ == '__main__':
     app()

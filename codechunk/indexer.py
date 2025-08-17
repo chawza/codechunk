@@ -20,6 +20,15 @@ class IndexSummary(BaseModel):
     total_chunk: int
     total_files: int
 
+    def to_csv(self, buffer) -> None:
+        import csv
+        writer = csv.writer(buffer)
+        writer.writerow(['filename', 'chunks count'])
+        for filename, chunk_count in self.files.items():
+            writer.writerow([filename, str(chunk_count)])
+        writer.writerow(['file count', str(self.total_files)])
+        writer.writerow(['chunk count', str(self.total_chunk)])
+
 class IndexCache(BaseModel):
     # TODO: append file, rather thank rewrite
     name:str
