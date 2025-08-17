@@ -5,3 +5,10 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = []
+
+[project.scripts]
+codechunk = "codechunk.codechunk:app"
+
+[tool.setuptools.packages.find]
+where = ["."]           # Look for packages in the current directory (project root)
+include = ["codechunk*"]   # Explicitly include your main package 'docgen'
