@@ -53,6 +53,7 @@ def query(output: Path = Path('output.json'), n: int = 5):
 
     if not project_names:
         logger.info('No project indexed')
+        logger.info('try `docgen index <repo url>` first')
         return
 
     project_selection_app = ProjectSelection(project_names)
