@@ -39,7 +39,7 @@ def index(project_url: str):
 class ChunkDetail(FileChunk):
     distance: float
 
-class JSONOutput(BaseModel):
+class OutputResult(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     repo: str  # owner/repo
@@ -76,7 +76,7 @@ def query(output: Path = Path('output.json'), n: int = 5):
 
     result = indexer.collection.query(query_texts=[query,], n_results=n)
 
-    output_result = JSONOutput(created=int(datetime.now().timestamp()), chunks=[], repo=project_name, hash=get_current_commit_id(repo))
+    output_result = OutputResult(created=int(datetime.now().timestamp()), chunks=[], repo=project_name, hash=get_current_commit_id(repo))
 
     for id, document, distance in zip(result['ids'][0], result['documents'][0], result['distances'][0]):
         chunk = FileChunk.from_document_id(id, document)
@@ -87,9 +87,22 @@ def query(output: Path = Path('output.json'), n: int = 5):
             )
         )
 
-    with open(output, 'w') as file:
-        file.write(output_result.model_dump_json(indent=2))
-        logger.info(f'Result in "{file.name}"')
+    if str(output).endswith('.csv'):
+        with open(output, 'w') as file:
+            file.write(output_result.model_dump_json(indent=2))
+            logger.info(f'Result in "{file.name}"')
+    elif str(output).endswith('.txt') or str(output).endswith('.md'):
+        with open(output, 'w') as file:
+            for chunk in output_result.chunks:
+                file.writelines([
+                    f'# start {chunk.filename} start:{chunk.start_line} end:{chunk.end_line}\n',
+                    chunk.content.rstrip('\n') + '\n',
+                    f'# end {chunk.filename} start:{chunk.start_line} end:{chunk.end_line}\n',
+
+                ])
+            logger.info(f'Result in "{file.name}"')
+    else:
+        raise NotImplementedError(f'Not supperted type output {output}')
 
 
 if __name__ == '__main__':
