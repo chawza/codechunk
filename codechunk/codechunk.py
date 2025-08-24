@@ -104,6 +104,7 @@ def query(output: Path = Path('output.json'), n: int = 5):
         with open(output, 'w') as file:
             file.write(output_result.model_dump_json(indent=2))
             logger.info(f'Result in "{file.name}"')
+
     elif str(output).endswith('.txt') or str(output).endswith('.md'):
         with open(output, 'w') as file:
             for chunk in output_result.chunks:
